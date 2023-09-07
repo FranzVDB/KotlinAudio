@@ -453,6 +453,30 @@ abstract class BaseAudioPlayer internal constructor(
                 audioItem.options!!.userAgent
             }
 
+        if(isUriLocal(uri)) {
+            try {
+                val offlineAssetService = Class.forName("com.boi.assetservice.OfflineAssetService")
+                    .getDeclaredConstructor().newInstance()
+                val getAVURLAsset = offlineAssetService.javaClass.getDeclaredMethod(
+                    "getAVURLAsset",
+                    String::class.java,
+                    Context::class.java,
+                    MediaItem::class.java
+                )
+                val assetId: String = audioItem.audioUrl
+                val file = getAVURLAsset.invoke(offlineAssetService, assetId, context, mediaItem)
+                val media = file as MediaSource
+                // You can return this media directly if it should override the default behavior
+                Timber.d("returning media: ${media.toString()}")
+                return media
+
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to create MediaSource using OfflineAssetService")
+                // Fallback to default behavior if the above fails
+                DefaultDataSourceFactory(context, userAgent)
+            }
+        }
+
         val factory: DataSource.Factory = when {
             audioItem.options?.resourceId != null -> {
                 val raw = RawResourceDataSource(context)
